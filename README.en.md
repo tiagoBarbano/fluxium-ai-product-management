@@ -203,7 +203,7 @@ On the frontend, `NEXT_PUBLIC_API_BASE_URL` sets the API base URL. Since it is a
 
 - [Project instructions](docs/ai/00-instructions.md)
 - [Specification Driven Development process](docs/ai/specification-driven-development.md)
-- [Product specification](docs/specifications/AI_Product_Management_Platform_Especificacao_v0.1.txt)
+- [Product specification](docs/specifications/AI_Product_Management_Platform_Especificacao_v0.1.md)
 - [MVP PRD](docs/specifications/AI_Product_Management_Platform_MVP_PRD_v0.1.md)
 - [MVP UX](docs/specifications/AI_Product_Management_Platform_MVP_UX_v0.1.md)
 - [MVP wireframes](docs/specifications/AI_Product_Management_Platform_MVP_Wireframes_v0.1.md)
@@ -224,4 +224,6 @@ New features should follow the specification, analysis, planning, validation, im
 
 This repository is under active development. Product specifications describe the proposed scope and may include functionality that has not yet been implemented.
 
-There is currently no `LICENSE` file in the repository root. Making the repository public on GitHub does not, by itself, define usage or redistribution rights.
+This project is distributed under the **GNU Affero General Public License v3.0 (AGPL-3.0-only)**. See [`LICENSE`](LICENSE) for the full text. The AGPL includes obligations to make corresponding source code available in certain forms of distribution and remote interaction with modified versions.
+
+To propose improvements to the upstream repository, open an issue and submit a pull request following the [contribution guide](CONTRIBUTING.md). The license does not require users of forks to send changes back to this repository.
