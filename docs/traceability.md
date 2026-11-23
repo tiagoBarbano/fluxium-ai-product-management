@@ -1,0 +1,39 @@
+# Rastreabilidade do MVP
+
+Esta matriz acompanha a implementação incremental do backend e do frontend.
+
+| Requisito | Implementação planejada | Testes planejados |
+|---|---|---|
+| REQ-MVP-001 Workspace e contexto multi-tenant | `backend/app/shared/auth/auth_model.py`, `backend/app/shared/auth/authorization.py` | `backend/tests/unit/test_auth.py` e testes tenant-scoped das features |
+| REQ-MVP-002 Gestão de Product | `backend/app/features/products/router.py`, `backend/app/features/products/service.py`, `backend/app/features/products/repository.py`, `backend/app/features/products/domain`, `backend/app/features/products/schemas` | `backend/tests/unit/features/products` |
+| REQ-MVP-003 OKR com múltiplos Objectives e KRs | `backend/app/features/okrs/router.py`, `backend/app/features/okrs/service.py`, `backend/app/features/okrs/repository.py`, `backend/app/features/okrs/domain`, `backend/app/features/okrs/schemas` | `backend/tests/unit/features/okrs` e suíte completa |
+| REQ-MVP-004 Opportunity Discovery | `backend/app/features/opportunities/*` e `backend/app/features/discovery/*` (sessão manual, mensagens, contexto estruturado e transição `NEW -> DISCOVERY`) | `backend/tests/unit/features/opportunities`, `backend/tests/unit/features/discovery` e suíte completa |
+| REQ-MVP-005 IA assistiva e auditável | `backend/app/features/ai_gateway/*` e `backend/app/features/readiness/async_service.py` (Gateway Ollama/fakes; assessment criado somente após sucesso da IA) | `backend/tests/unit/features/ai_gateway`, `backend/tests/unit/features/readiness/test_async_service.py` e suíte completa |
+| REQ-MVP-006 Jobs assíncronos | `backend/app/shared/jobs/*` e `backend/app/features/readiness/router.py` com Redis/fake, estados, idempotência, retry e consulta de status | `backend/tests/unit/shared/test_jobs.py`, `backend/tests/unit/features/readiness/test_async_service.py` e suíte completa |
+| REQ-MVP-007 Product Readiness | `backend/app/features/readiness/*`, especialmente `backend/app/features/readiness/domain/entities.py` (score determinístico e confiança estimada separada), `backend/app/features/readiness/async_service.py`, `backend/app/features/ai_gateway/service.py` e `frontend/src/features/readiness/components/readiness-review.tsx` (contexto guiado em oito dimensões e nota livre) | `backend/tests/unit/features/readiness`, `backend/tests/unit/features/ai_gateway/test_service.py`, validação frontend com lint/build e suíte completa |
+| REQ-MVP-008 Aprovação humana restrita | `backend/app/features/proposals/*`, `backend/app/shared/auth/authorization.py::can_approve_ai_proposal` e integração em `frontend/src/features/readiness/components/readiness-review.tsx` / `frontend/src/features/readiness/services/readiness-service.ts`; histórico por Initiative em `GET /initiatives/{initiative_id}/proposals` e `frontend/src/features/proposals/components/initiative-proposal-history.tsx` | `backend/tests/unit/features/proposals`, `backend/tests/unit/test_auth.py`, `backend/tests/unit/features/proposals/test_service.py::test_lists_initiative_proposals_with_optional_status_filter` e validação frontend com lint/build |
+| REQ-MVP-009 Auditoria e rastreabilidade | `backend/app/shared/audit/*`, `backend/app/shared/audit/router.py`, `backend/app/shared/observability/request_context.py` e auditoria de decisões em `backend/app/features/proposals/service.py` | `backend/tests/unit/shared/test_audit.py`, `backend/tests/unit/features/proposals` e suíte completa |
+| REQ-MVP-010 Retenção e operação local | Política de retenção de cinco anos e configuração local | Testes de configuração e expiração controlada |
+| REQ-MVP-011 Gestão de OKRs | `backend/app/features/okrs/{router.py,service.py,repository.py,domain,schemas}` (Objective pertence ao Product), `backend/app/features/initiatives/{service.py,domain,schemas}` (Initiative referencia vários Objectives), `frontend/src/features/okrs`, `frontend/src/features/workspace/components/workspace-context.tsx`, `frontend/src/app/workspace/okrs/page.tsx` | `backend/tests/unit/features/okrs`, `backend/tests/unit/features/initiatives`, validação de workspace/Product e reutilização de Objective, além de lint/build frontend |
+| SEC-001 | Ciclo administrativo de identidade, provider OIDC interno, refresh rotativo e assinatura RS256/JWKS | `backend/app/shared/auth/identity_router.py`, `backend/app/shared/auth/identity_service.py`, `backend/app/shared/auth/identity_repository.py`, `backend/app/shared/auth/oidc.py`, `backend/app/shared/auth/security.py`, `backend/app/shared/auth/identity_port.py`, `backend/scripts/create_identity_indexes.py` | `backend/tests/unit/test_auth.py`, `backend/tests/unit/test_identity_service.py`, `backend/tests/unit/test_identity_router.py`, `backend/tests/integration/test_identity_mongo.py`, `backend/tests/integration/test_oidc_rs256.py` |
+| REQ-MVP-012 Business Plan 5W2H opcional e versionado | Estrutura opcional na Initiative com versionamento otimista | Testes de criação, versionamento e ausência opcional |
+| REQ-MVP-013 Initiative e Business Plan | `backend/app/features/initiatives/*`, `backend/app/features/business_plans/*` e routers registrados em `backend/app/main.py` | `backend/tests/unit/features/initiatives`, `backend/tests/unit/features/business_plans` e suíte completa |
+| REQ-MVP-014 Jobs assíncronos | `backend/app/shared/jobs/*` com estados, retry, idempotência, Redis adapter e fake offline | `backend/tests/unit/shared/test_jobs.py` e suíte completa |
+| REQ-MVP-014 / NFR-MVP-004 Worker Redis de Readiness | `backend/app/workers/readiness_worker.py`, `backend/app/features/readiness/async_service.py` e `backend/app/shared/jobs/redis.py` (claim exclusivo por lease, polling e execução fora do processo HTTP) | `backend/tests/unit/workers/test_readiness_worker.py`, `backend/tests/unit/shared/test_jobs.py` e `backend/tests/integration/test_readiness_redis.py` (opt-in: `FLUXIUM_RUN_REDIS_INTEGRATION=1`) |
+| REQ-MVP-001 / Cadastro de Workspace | `backend/app/features/workspaces/*`, `backend/app/shared/auth/identity_repository.py` e `frontend/src/features/workspaces/services/workspace-service.ts` com onboarding em `frontend/src/features/workspace/components/workspace-context.tsx` | `backend/tests/unit/features/workspaces/test_service.py` e validação frontend com lint/build |
+
+## Rastreabilidade frontend - primeira vertical autenticada
+
+| Requisito | Implementação | Testes |
+|---|---|---|
+| SEC-001 / sessão de usuário | `frontend/src/features/auth/services/auth-service.ts`, `frontend/src/features/auth/components/login-form.tsx`, `frontend/src/lib/http.ts` e `frontend/src/components/app-shell.tsx` | `frontend/tests/e2e/auth/login.spec.ts` |
+| REQ-MVP-001 / contexto workspace | `frontend/src/features/products/services/product-service.ts`, `frontend/src/features/initiatives/services/initiative-service.ts` e `frontend/src/features/overview/components/overview-dashboard.tsx` | `frontend/tests/e2e/readiness/overview.spec.ts` |
+| REQ-MVP-007 / entrada para Readiness Review | `frontend/src/features/overview/components/overview-dashboard.tsx` e `frontend/src/app/readiness/[initiativeId]/page.tsx` | `frontend/tests/e2e/readiness/overview.spec.ts` |
+| NFR frontend / execução E2E determinística | `frontend/playwright.config.ts` e mocks de API por feature | `npm run test:e2e` |
+
+### Escopo operacional do worker Redis
+
+- O submit grava o job como `PENDING` no Redis e retorna `202` com `job_id`.
+- O processo HTTP apenas cria o job; `uv run python -m app.workers.readiness_worker` descobre e reivindica jobs com lease, transitando `PENDING -> RUNNING -> SUCCEEDED|FAILED`.
+- A integração real usa `FLUXIUM_REDIS_URL`, polling com timeout explícito e prefixo Redis único por teste para isolamento e limpeza.
+- Ollama não participa do teste: `FakeAIProvider` injeta uma geração válida ou uma falha controlada.

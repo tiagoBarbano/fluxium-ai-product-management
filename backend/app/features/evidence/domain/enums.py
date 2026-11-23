@@ -1,0 +1,18 @@
+from enum import StrEnum
+
+
+class EvidenceType(StrEnum):
+    INTERVIEW = "INTERVIEW"
+    ANALYTICS = "ANALYTICS"
+    SUPPORT = "SUPPORT"
+    RESEARCH = "RESEARCH"
+    DOCUMENT = "DOCUMENT"
+    EXPERIMENT = "EXPERIMENT"
+    OPERATIONAL_DATA = "OPERATIONAL_DATA"
+    CUSTOMER_FEEDBACK = "CUSTOMER_FEEDBACK"
+
+
+class EvidenceOrigin(StrEnum):
+    MANUAL = "MANUAL"
+    IMPORTED = "IMPORTED"
+    OBSERVED = "OBSERVED"

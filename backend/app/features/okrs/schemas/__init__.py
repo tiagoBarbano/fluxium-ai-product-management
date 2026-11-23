@@ -1,0 +1,1 @@
+"""Pydantic contracts for OKR requests and responses."""

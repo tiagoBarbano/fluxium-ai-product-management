@@ -1,0 +1,142 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "value_and_name"},
+      "targets": [{"expr": "min(up{job=~\"$job\", environment=~\"$environment\"})", "legendFormat": "selected services", "refId": "A"}],
+      "title": "Services Available",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 5, "w": 18, "x": 6, "y": 0},
+      "id": 2,
+      "options": {"legend": {"calcs": [], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"expr": "up{job=~\"$job\", environment=~\"$environment\"}", "legendFormat": "{{job}}", "refId": "A"}],
+      "title": "Service Availability",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+      "id": 3,
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"expr": "sum by (job) (rate(http_requests_total{job=~\"$job\", environment=~\"$environment\", route=~\"$route\"}[$__rate_interval]))", "legendFormat": "{{job}}", "refId": "A"}],
+      "title": "Request Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "unit": "percent", "min": 0, "max": 100, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 5}]}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+      "id": 4,
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"expr": "100 * sum by (job) (rate(http_requests_total{job=~\"$job\", environment=~\"$environment\", route=~\"$route\", status=~\"5..\"}[$__rate_interval])) / clamp_min(sum by (job) (rate(http_requests_total{job=~\"$job\", environment=~\"$environment\", route=~\"$route\"}[$__rate_interval])), 0.000001)", "legendFormat": "{{job}}", "refId": "A"}],
+      "title": "5xx Error Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "unit": "ms", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 300}, {"color": "red", "value": 1000}]}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 13},
+      "id": 5,
+      "options": {"legend": {"calcs": [], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"expr": "1000 * histogram_quantile(0.50, sum by (job, le) (rate(http_request_latency_seconds_bucket{job=~\"$job\", environment=~\"$environment\", route=~\"$route\"}[$__rate_interval])))", "legendFormat": "{{job}} p50", "refId": "A"},
+        {"expr": "1000 * histogram_quantile(0.95, sum by (job, le) (rate(http_request_latency_seconds_bucket{job=~\"$job\", environment=~\"$environment\", route=~\"$route\"}[$__rate_interval])))", "legendFormat": "{{job}} p95", "refId": "B"},
+        {"expr": "1000 * histogram_quantile(0.99, sum by (job, le) (rate(http_request_latency_seconds_bucket{job=~\"$job\", environment=~\"$environment\", route=~\"$route\"}[$__rate_interval])))", "legendFormat": "{{job}} p99", "refId": "C"}
+      ],
+      "title": "Request Latency Percentiles",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "unit": "ms", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 300}, {"color": "red", "value": 1000}]}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 21},
+      "id": 9,
+      "options": {"legend": {"calcs": [], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"expr": "1000 * sum by (job) (rate(http_request_latency_seconds_sum{job=~\"$job\", environment=~\"$environment\", route=~\"$route\"}[$__rate_interval])) / clamp_min(sum by (job) (rate(http_request_latency_seconds_count{job=~\"$job\", environment=~\"$environment\", route=~\"$route\"}[$__rate_interval])), 0.000001)", "legendFormat": "{{job}} average", "refId": "A"}],
+      "title": "Average Request Latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 21},
+      "id": 6,
+      "options": {"legend": {"calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"expr": "sum by (job, status) (rate(http_requests_total{job=~\"$job\", environment=~\"$environment\", route=~\"$route\"}[$__rate_interval]))", "legendFormat": "{{job}} {{status}}", "refId": "A"}],
+      "title": "HTTP Status Distribution",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 29},
+      "id": 7,
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"expr": "topk(10, sum by (job, route) (rate(http_requests_total{job=~\"$job\", environment=~\"$environment\", route=~\"$route\"}[$__rate_interval])))", "legendFormat": "{{job}} {{route}}", "refId": "A"}],
+      "title": "Top Routes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 29},
+      "id": 8,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "value_and_name"},
+      "targets": [{"expr": "count(up{job=~\"$job\", environment=~\"$environment\"})", "legendFormat": "scrape targets", "refId": "A"}],
+      "title": "Prometheus Targets",
+      "type": "stat"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["fluxium", "overview", "prometheus"],
+  "templating": {
+    "list": [
+      {"current": {"text": "All", "value": ["$__all"]}, "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "includeAll": true, "label": "Service", "multi": true, "name": "job", "options": [], "query": "label_values(up, job)", "refresh": 1, "type": "query", "allValue": ".*"},
+      {"current": {"text": "All", "value": ["$__all"]}, "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "includeAll": true, "label": "Environment", "multi": true, "name": "environment", "options": [], "query": "label_values(up, environment)", "refresh": 1, "type": "query", "allValue": ".*"},
+      {"current": {"text": "All", "value": ["$__all"]}, "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "includeAll": true, "label": "Route / path", "multi": true, "name": "route", "options": [], "query": "label_values(http_requests_total{job=~\"$job\", environment=~\"$environment\"}, route)", "refresh": 1, "type": "query", "allValue": ".*"},
+      {"current": {"text": "Prometheus", "value": "${DS_PROMETHEUS}"}, "label": "Datasource", "name": "DS_PROMETHEUS", "options": [], "query": "prometheus", "refresh": 1, "type": "datasource", "regex": "/Prometheus/"}
+    ]
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Fluxium Overview",
+  "uid": "fluxium-overview",
+  "version": 2,
+  "weekStart": ""
+}

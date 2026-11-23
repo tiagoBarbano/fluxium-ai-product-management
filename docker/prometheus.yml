@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 30s
+
+scrape_configs:
+  - job_name: 'decision-service-api'
+    static_configs:
+      - targets: ['decision-service-api:8000']
+        labels:
+          environment: staging
+  - job_name: 'decision-service-prd-api'
+    static_configs:
+      - targets: ['decision-service-prd-api:8000']
+        labels:
+          environment: production
+  - job_name: 'simulate-service-api'
+    static_configs:
+      - targets: ['simulate-service-api:8000']
+        labels:
+          environment: staging
+  - job_name: 'Admin-core-api'
+    static_configs:
+      - targets: ['core:8000']
+        labels:
+          environment: staging
+  - job_name: 'tempo'
+    static_configs:
+      - targets: ['tempo:3200']

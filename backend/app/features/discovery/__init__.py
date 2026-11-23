@@ -1,0 +1,1 @@
+"""Manual product discovery feature."""

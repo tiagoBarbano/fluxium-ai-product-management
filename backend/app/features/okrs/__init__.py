@@ -1,0 +1,1 @@
+"""Domain contracts for Objectives and Key Results."""

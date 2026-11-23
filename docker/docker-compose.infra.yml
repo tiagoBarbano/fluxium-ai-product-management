@@ -1,0 +1,338 @@
+# x-logging: &default-logging
+#   driver: loki
+#   options:
+#     loki-url: "http://localhost:3100/api/prom/push"
+#     no-file: "false"
+#     keep-file: "true"
+#     loki-pipeline-stages: |
+#       - multiline:
+#           firstline: '^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2}'
+#           max_wait_time: 3s 
+#       - regex:
+#           expression: '^(?P<time>\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2},d{3}) (?P<message>(?s:.*))$$'
+
+volumes:
+  mongo-data:
+  redis-data:
+  tempo-data:
+  ollama:
+
+networks:
+  default:
+    external: true
+    name: fluxium-network
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      FLUXIUM_ENVIRONMENT: local
+      FLUXIUM_API_PREFIX: /api/v1
+      FLUXIUM_CORS_ALLOWED_ORIGINS: ${FLUXIUM_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      FLUXIUM_MONGO_URI: mongodb://mongo:27017/?replicaSet=rs0
+      FLUXIUM_MONGO_DATABASE: fluxium
+      FLUXIUM_REDIS_URL: redis://:redis1234@redis:6379/0
+      FLUXIUM_OLLAMA_BASE_URL: http://ollama:11434
+      FLUXIUM_OLLAMA_MODEL: ${FLUXIUM_OLLAMA_MODEL:-qwen3:4b-instruct}
+      FLUXIUM_DEFAULT_WORKSPACE_ID: ${FLUXIUM_DEFAULT_WORKSPACE_ID:-}
+      FLUXIUM_IDENTITY_JWT_SECRET: ${FLUXIUM_IDENTITY_JWT_SECRET:-local-compose-secret-change-me-32-bytes}
+      FLUXIUM_IDENTITY_JWT_ALGORITHM: HS256
+      FLUXIUM_IDENTITY_JWT_ISSUER: http://localhost:8000
+      FLUXIUM_IDENTITY_JWT_AUDIENCE: fluxium-api
+      FLUXIUM_IDENTITY_ACCESS_TOKEN_TTL_SECONDS: 7200
+      FLUXIUM_IDENTITY_REFRESH_TOKEN_TTL_SECONDS: 7200
+    ports:
+      - "8000:8000"
+    depends_on:
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_started
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  readiness-worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    command: ["uv", "run", "--no-dev", "python", "-m", "app.workers.readiness_worker"]
+    environment:
+      FLUXIUM_ENVIRONMENT: local
+      FLUXIUM_MONGO_URI: mongodb://mongo:27017/?replicaSet=rs0
+      FLUXIUM_MONGO_DATABASE: fluxium
+      FLUXIUM_REDIS_URL: redis://:redis1234@redis:6379/0
+      FLUXIUM_OLLAMA_BASE_URL: http://ollama:11434
+      FLUXIUM_OLLAMA_MODEL: ${FLUXIUM_OLLAMA_MODEL:-qwen3:4b-instruct}
+      FLUXIUM_READINESS_WORKER_POLL_INTERVAL: 1o
+      FLUXIUM_READINESS_WORKER_LEASE_SECONDS: 300
+    depends_on:
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_started
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1}
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3000/login"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    
+  mongo:
+    image: mongo:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+    command: [ "--replSet", "rs0", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.25" ]
+    volumes:
+      - mongo-data:/data/db
+      - ./mongo-init-replica.js:/docker-entrypoint-initdb.d/mongo-init-replica.js:ro
+    ports:
+      - "27017:27017"
+    deploy:
+      replicas: 1
+      resources:
+        limits:   
+          cpus: "4.0"
+          memory: 2048M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    #logging: *default-logging
+
+  redis:
+    image: redis:7
+    command: [ "redis-server", "--requirepass", "redis1234" ]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.10"
+          memory: 64M
+    #logging: *default-logging
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+
+  tempo:
+    image: grafana/tempo:2.3.1
+    command: [ "--config.file=/etc/tempo/tempo.yaml" ]
+    volumes:
+      - tempo-data:/var/tempo
+      - ./tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - ./overrides.yaml:/etc/tempo/tempo-overrides.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "3200:3200"
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 4096M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+
+  # loki:
+  #   image: grafana/loki:latest
+  #   ports:
+  #     - "3100:3100"
+  #   command: -config.file=/etc/loki/local-config.yaml
+  #   deploy:
+  #     replicas: 1
+  #     resources:
+  #       limits:
+  #         cpus: "0.5"
+  #         memory: 256M
+  #       reservations:
+  #         cpus: "0.10"
+  #         memory: 64M
+
+  # promtail:
+  #   image: grafana/promtail:latest
+  #   volumes:
+  #     - ./promtail.yaml:/etc/promtail/docker-config.yaml
+  #     - /var/lib/docker/containers:/var/lib/docker/containers:ro
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   command: -config.file=/etc/promtail/docker-config.yaml
+  #   depends_on:
+  #     - loki
+  #   deploy:
+  #     replicas: 1
+  #     resources:
+  #       limits:
+  #         cpus: "0.25"
+  #         memory: 128M
+  #       reservations:
+  #         cpus: "0.05"
+  #         memory: 32M
+
+  # cadvisor:
+  #   image: gcr.io/cadvisor/cadvisor:latest
+  #   deploy:
+  #     # mode: global   # 1 por nó do Swarm
+  #     resources:
+  #       limits:
+  #         cpus: "0.25"
+  #         memory: 128M
+  #       reservations:
+  #         cpus: "0.05"
+  #         memory: 32M
+  #   volumes:
+  #     - /:/rootfs:ro
+  #     - /var/run:/var/run:ro
+  #     - /sys:/sys:ro
+  #     - /var/lib/docker/:/var/lib/docker:ro
+  #   ports:
+  #     - "8081:8080"
+
+  # mongodb_exporter:
+  #   image: percona/mongodb_exporter:0.40
+  #   command:
+  #     - '--mongodb.uri=mongodb://mongo:27017'
+  #     - '--collector.diagnosticdata'
+  #     - '--collector.replicasetstatus'
+  #     - '--collector.dbstats'
+  #     - '--collector.dbstatsfreestorage'
+  #     - '--collector.topmetrics'
+  #     - '--collector.currentopmetrics'
+  #     - '--collector.indexstats'
+  #     - '--collector.collstats'
+  #     - '--collector.profile'
+  #   ports:
+  #     - "9216:9216"
+  #   depends_on:
+  #     - mongo
+  #   deploy:
+  #     replicas: 1
+  #     resources:
+  #       limits:
+  #         cpus: "0.25"
+  #         memory: 128M
+  #       reservations:
+  #         cpus: "0.05"
+  #         memory: 32M
+  #     restart_policy:
+  #       condition: any
+
+  # redis_exporter:
+  #   image: oliver006/redis_exporter:v1.54.0
+  #   ports:
+  #     - "9121:9121"
+  #   environment:
+  #     REDIS_ADDR: redis://:redis1234@redis:6379
+  #   depends_on:
+  #     - redis
+  #   deploy:
+  #     replicas: 1
+  #     resources:
+  #       limits:
+  #         cpus: "0.20"
+  #         memory: 128M
+  #       reservations:
+  #         cpus: "0.05"
+  #         memory: 32M
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-1
+    restart: always
+
+    runtime: nvidia
+
+    ports:
+      - "11434:11434"
+
+    volumes:
+      - ollama:/root/.ollama
+
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+      OLLAMA_ORIGINS: "*"
+
+      # VS Code Agent
+      OLLAMA_CONTEXT_LENGTH: "8192"
+
+      # Manter modelo carregado na VRAM
+      OLLAMA_KEEP_ALIVE: "-1"
+
+      # Uma requisição por vez para maximizar recursos por sessão
+      OLLAMA_NUM_PARALLEL: "1"
+
+      # Apenas um modelo carregado
+      OLLAMA_MAX_LOADED_MODELS: "1"
+
+      # Reduz consumo do KV cache
+      OLLAMA_KV_CACHE_TYPE: "q8_0"
+
+      # Flash Attention
+      OLLAMA_FLASH_ATTENTION: "1"
+
+      # NVIDIA
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility

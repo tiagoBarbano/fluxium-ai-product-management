@@ -1,0 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { AuditEvent, AuditEventPage } from "@/types/api";
+import { listAuditEvents } from "../services/audit-service";
+import { useI18n } from "@/components/i18n-provider";
+
+export function AuditTable({ workspaceId, initiativeId }: { workspaceId: string; initiativeId?: string }) {
+  const { t } = useI18n(); const [page, setPage] = useState<AuditEventPage | null>(null); const [cursor, setCursor] = useState<string>(); const [resource, setResource] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
+  useEffect(() => { listAuditEvents({ workspaceId, initiativeId, resource: resource || undefined, cursor }).then(setPage).catch((requestError: Error) => setError(requestError.message)).finally(() => setLoading(false)); }, [workspaceId, initiativeId, resource, cursor]);
+  return <section className="panel audit-panel"><div className="panel-heading"><div><span className="eyebrow">{t("audit.governance")}</span><h2>{t("audit.title")}</h2></div><label className="select-label">{t("audit.resource")}<select value={resource} onChange={(event) => { setCursor(undefined); setResource(event.target.value); }}><option value="">{t("audit.allResources")}</option><option value="readiness_assessment">{t("audit.readiness")}</option><option value="initiative">{t("audit.initiative")}</option></select></label></div>{error ? <div className="error-box" role="alert">{error}</div> : loading ? <p className="muted">{t("audit.loading")}</p> : <><div className="table-wrap"><table><caption className="sr-only">{t("audit.caption")}</caption><thead><tr><th>{t("audit.action")}</th><th>{t("audit.resource")}</th><th>{t("audit.actor")}</th><th>{t("audit.when")}</th><th>{t("audit.trace")}</th></tr></thead><tbody>{page?.items.length ? page.items.map((event) => <AuditRow event={event} key={event.event_id} />) : <tr><td colSpan={5} className="empty-cell">{t("audit.empty")}</td></tr>}</tbody></table></div><div className="pagination"><span>{t("audit.events", { count: page?.items.length ?? 0 })}</span><button className="secondary-button" type="button" disabled={!page?.next_cursor} onClick={() => setCursor(page?.next_cursor ?? undefined)}>{t("audit.next")}</button></div></>}</section>;
+}
+function AuditRow({ event }: { event: AuditEvent }) { return <tr><td><strong>{event.action}</strong></td><td>{event.resource}<small>{event.resource_id}</small></td><td>{event.actor}</td><td>{new Date(event.created_at).toLocaleString()}</td><td><code>{event.trace_id?.slice(0, 10) ?? "-"}</code></td></tr>; }
